@@ -4,23 +4,62 @@
  * С помощью этого класса будет выполняться загрузка изображений из vk.
  * Имеет свойства ACCESS_TOKEN и lastCallback
  * */
-class VK {
 
-  static ACCESS_TOKEN = '958eb5d439726565e9333aa30e50e0f937ee432e927f0dbd541c541887d919a7c56f95c04217915c32008';
+class VK {
+  static ACCESS_TOKEN ="";
   static lastCallback;
+  static SCRIPT_ID = "getImage";
 
   /**
    * Получает изображения
    * */
-  static get(id = '', callback){
+  static get(id = "", callback) {
+    VK.lastCallback = callback; //это наш калбэк для передачи в ВК запрос
 
-  }
+    const script = document.createElement("script"); // 1. создаем скрипт
+    script.id = VK.SCRIPT_ID;
+    script.src =
+      `https://api.vk.com/method/photos.get?` +
+      `owner_id=${id}&` +
+      `album_id=profile&` +
+      `access_token=${VK.ACCESS_TOKEN}&` +
+      `v=5.131&` +
+      `callback=VK.processData`;
+
+    document.body.appendChild(script); //размещаем в теле документа!!!
+  } //get
 
   /**
    * Передаётся в запрос VK API для обработки ответа.
    * Является обработчиком ответа от сервера.
    */
-  static processData(result){
+  static processData(result) {
+    function getBigSizeImageUrl(item) {
+      //ищем самую большую фотку в списке (по ширине)
+      let maxItem = item.reduce((prev, curr) => {
+        const prevSize = prev.width;
+        const currSize = curr.width;
+        return prevSize > currSize ? prev : curr;
+      });
+      return maxItem.url;
+    } //getBigSizeImageUrl
 
-  }
-}
+    const script = document.getElementById(VK.SCRIPT_ID);
+    if (script) {
+      script.remove();
+    }
+
+    let arrImages = [];
+
+    if (result.response) {
+      for (let i = 0; i < result.response.items.length; i++) {
+        arrImages.push(getBigSizeImageUrl(result.response.items[i].sizes));
+      }
+
+      VK.lastCallback(arrImages);
+    } else if (result.error) {
+      alert(`Ошибка при чтении данных: ${result.error.error_msg}`);
+    }
+    VK.lastCallback = () => {};
+  } //processResult
+} //class VK
